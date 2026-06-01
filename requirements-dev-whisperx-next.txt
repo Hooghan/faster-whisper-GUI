@@ -1,0 +1,15 @@
+# Experimental WhisperX upgrade track.
+#
+# This file is intentionally separate from requirements-dev-whisperx.txt.
+# The verified GUI baseline uses the repository's vendored whisperx/ package
+# with Torch CUDA 12.4. Upstream WhisperX 3.8.x documents CUDA 12.8 for GPU
+# use, so test this slice in an isolated environment before wiring it into the
+# GUI.
+#
+# CUDA 12.8 experimental route:
+#   Install an upstream-compatible Torch/Torchaudio CUDA 12.8 pair first, then
+#   install this file and run command-line WhisperX smoke tests.
+
+whisperx==3.8.6
+hf_xet>=1.2,<1.3
+imageio-ffmpeg>=0.6,<0.7

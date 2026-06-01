@@ -1,3 +1,8 @@
+import numpy as _np
+
+if not hasattr(_np, "NaN"):
+    _np.NaN = _np.nan
+
 from .transcribe import load_model
 from .alignment import load_align_model, align
 from .audio import load_audio

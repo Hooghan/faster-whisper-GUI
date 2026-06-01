@@ -2,11 +2,11 @@
 
 # from threading import Thread
 from concurrent import futures
+import inspect
 import os
 from typing import List
 import time
 import codecs
-import torch
 import numpy as np 
 import av
 import json
@@ -17,7 +17,6 @@ from faster_whisper.transcribe import TranscriptionInfo
 
 import webvtt
 from PySide6.QtCore import (QThread, Signal, QDateTime)
-from pyaudio import (PyAudio, paInt16, paInt24)
 import wave
 
 from .config import (
@@ -28,12 +27,45 @@ from .config import (
 
 from .seg_ment import segment_Transcribe
 from .util import (
+                    ensure_directory,
                     secondsToHMS, 
                     secondsToMS, 
                     WhisperParameters
                 )
 
 from .config import ENCODING_DICT, Task_list
+
+
+def normalize_vad_parameters(vad_parameters):
+    if vad_parameters is None:
+        return None
+
+    normalized = dict(vad_parameters)
+
+    try:
+        from faster_whisper.transcribe import VadOptions
+        valid_parameters = set(inspect.signature(VadOptions).parameters)
+    except Exception:
+        return normalized
+
+    if "onset" in normalized and "onset" not in valid_parameters and "threshold" in valid_parameters:
+        normalized["threshold"] = normalized.pop("onset")
+
+    return {
+        key: value
+        for key, value in normalized.items()
+        if key in valid_parameters
+    }
+
+
+def clear_torch_cuda_cache():
+    try:
+        import torch
+    except ImportError:
+        return
+
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
 class AudioStreamTranscribeWorker(QThread):
@@ -59,6 +91,7 @@ class CaptureAudioWorker(QThread):
                 , channels = 2
                 , dType = 16
             ) -> None:
+        from pyaudio import PyAudio, paInt16, paInt24
         
         super().__init__(parent)
         self.rate = rate
@@ -87,8 +120,7 @@ class CaptureAudioWorker(QThread):
         # print(currentDateTime)
 
         temp_path = r"./temp"
-        if not os.path.exists(os.path.abspath(temp_path)):
-            os.mkdir(os.path.abspath(temp_path))
+        ensure_directory(os.path.abspath(temp_path))
         # print(f"temp path : {temp_path}")
 
         wav_path = os.path.join(os.path.abspath(temp_path)
@@ -263,7 +295,7 @@ class TranscribeWorker(QThread):
                                                 language_detection_threshold = self.parameters["language_detection_threshold"],
                                                 language_detection_segments = self.parameters["language_detection_segments"],
                                                 vad_filter=self.vad_filter,
-                                                vad_parameters=self.vad_parameters
+                                                vad_parameters=normalize_vad_parameters(self.vad_parameters)
                                             )
         
         try:
@@ -338,8 +370,7 @@ class TranscribeWorker(QThread):
         self.is_running = True
 
         # 检查临时目录
-        if not(os.path.exists(r"./temp")):
-            os.mkdir(r"./temp")
+        ensure_directory(r"./temp")
 
         # model = self.model 
         parameters = self.parameters
@@ -389,8 +420,7 @@ class TranscribeWorker(QThread):
                 writeSubtitles(temp_output_save_file, segments=segments, format="SRT",language=info.language, fileName=path)
                 print(f"save temp file: {os.path.abspath(temp_output_save_file)}")
                 
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+        clear_torch_cuda_cache()
             
         print("\n【Over】")
         self.signal_process_over.emit(self.segments_path_info)
@@ -441,7 +471,7 @@ def writeJson(fileName:str, segments:List[segment_Transcribe], language:str,avFi
                 "format": "SubRip",
                 "templates": {
                                 "default": "__CONTENT__",
-                                "italic": "<i>__CONTENT__<\/i>"
+                                "italic": "<i>__CONTENT__</i>"
                             },
                 "styles": {
                             "default": "font-style: 10px; line-height: 1; color: #FFF;"

@@ -6,11 +6,17 @@ import locale
 
 import json
 
-try:
-    config_json = json.load(open("./fasterWhisperGUIConfig.json", "r", encoding="utf-8"))
-    language_config = config_json["setting"]["language"]
-except:
-    language_config = 2
+
+def load_language_config(config_path="./fasterWhisperGUIConfig.json") -> int:
+    try:
+        with open(config_path, "r", encoding="utf-8") as config_file:
+            config_json = json.load(config_file)
+        return int(config_json["setting"]["language"])
+    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+        return 2
+
+
+language_config = load_language_config()
 
 if language_config == 0:
     language = "zh"

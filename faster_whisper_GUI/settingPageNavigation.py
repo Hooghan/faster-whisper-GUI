@@ -31,7 +31,7 @@ from .paramItemWidget import ParamWidget
 from .style_sheet import StyleSheet
 from .config import default_Huggingface_user_token, THEME_COLORS
 
-from .util import outputWithDateTime
+from .util import clear_temp_srt_files, ensure_directory, ensure_file, outputWithDateTime
 
 class ThemeColorModel(QAbstractListModel):
     def data(self, index, role):
@@ -143,10 +143,10 @@ class SettingPageNavigationInterface(ScrollArea):
         # --------------------------------------------------------------------------------------------------------------------------------------------------------------
         self.LineEdit_use_auth_token = LineEdit()
         self.LineEdit_use_auth_token.setFixedWidth(330)
-        self.use_auth_token_param_widget = ParamWidget(self.__tr("HuggingFace用户令牌"),
-                                                        self.__tr("访问声源分析、分离模型需要提供经过许可的 HuggingFace 用户令牌。\n如果默认令牌失效可以尝试自行注册账号并生成、刷新令牌"),
+        self.use_auth_token_param_widget = ParamWidget(self.__tr("Hugging Face 用户令牌"),
+                                                        self.__tr("WhisperX 说话人分离需要你自己的 Hugging Face 用户令牌，并且账号需先同意 pyannote 模型授权。\n程序不会内置或分发他人的令牌；留空时说话人分离可能无法下载授权模型。"),
                                                         self.LineEdit_use_auth_token 
-                                                    )
+                                                        )
         
         self.addWidget(self.use_auth_token_param_widget)
         self.use_auth_token_param_widget.mainHLayout.setStretch(0,4)
@@ -190,15 +190,10 @@ class SettingPageNavigationInterface(ScrollArea):
         self.paramItemWidget_FWlogFile = ParamWidget(self.__tr("faster-whisper 日志文件"), self.__tr("faster-whisper 转写的日志将保存到该文件中，\n转写过程中如果发生崩溃请参看"), self.pushButton_openFWLogFile)
         self.addWidget(self.paramItemWidget_FWlogFile)
 
-    def setSwitchStatus(self):
-        self.switchButton_autoLoadModel.setChecked(False)
-        self.paramItemWidget_autoLoadModel.setEnabled(self.switchButton_saveConfig.isChecked())
-
     def signalAndSlotProcess(self):
-        self.switchButton_saveConfig.checkedChanged.connect(self.setSwitchStatus)
-        self.pushButton_openTempDir.clicked.connect(lambda: os.startfile(os.path.abspath(r"./temp/").replace("\\","/")))
-        self.pushButton_openLogFile.clicked.connect(lambda: os.startfile(os.path.abspath(r"./fasterwhispergui.log").replace("\\","/")))
-        self.pushButton_openFWLogFile.clicked.connect(lambda: os.startfile(os.path.abspath(r"./faster_whisper.log").replace("\\","/")))  
+        self.pushButton_openTempDir.clicked.connect(lambda: os.startfile(str(ensure_directory(r"./temp").resolve()).replace("\\","/")))
+        self.pushButton_openLogFile.clicked.connect(lambda: os.startfile(str(ensure_file(r"./fasterwhispergui.log").resolve()).replace("\\","/")))
+        self.pushButton_openFWLogFile.clicked.connect(lambda: os.startfile(str(ensure_file(r"./faster_whisper.log").resolve()).replace("\\","/")))  
         self.pushButton_clearTempFiles.clicked.connect(self.deletTempFiles)
         self.colorPickerButton.colorChanged.connect(self.setThemeColorAndText)
         self.randomPickThemeColorToolButton.clicked.connect(self.setColorAndThemeColorRandom)
@@ -210,7 +205,7 @@ class SettingPageNavigationInterface(ScrollArea):
         mess_ = MessageBox(self.__tr("注意"), self.__tr("将会清除全部临时文件，是否确定？"), self)
         if mess_.exec():
             try:
-                os.system(r"del .\temp\*.srt")
+                clear_temp_srt_files("./temp")
                 mess_ = MessageBox(self.__tr("提示"), self.__tr("清除成功"), self)
                 mess_.show()
                 print("clear over")
@@ -237,9 +232,9 @@ class SettingPageNavigationInterface(ScrollArea):
     def getParam(self):
         param = {}
         param["saveConfig"] = self.switchButton_saveConfig.isChecked()
-        param["autoLoadModel"] = self.switchButton_autoLoadModel.isChecked() if param["saveConfig"] else False
+        param["autoLoadModel"] = self.switchButton_autoLoadModel.isChecked()
         param["language"] = self.combox_language.currentIndex()
-        param["huggingface_user_token"] = self.LineEdit_use_auth_token.text().strip() or default_Huggingface_user_token 
+        param["huggingface_user_token"] = self.LineEdit_use_auth_token.text().strip()
         param["autoGoToOutputPage"] =  self.combox_autoGoToOutputPage.currentIndex()
         param["autoClearTempFiles"] = self.switchButton_autoClearTempFiles.isChecked()
         param["themeColor"] = self.themeColor_str

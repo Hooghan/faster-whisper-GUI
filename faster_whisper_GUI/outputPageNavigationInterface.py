@@ -12,7 +12,8 @@ from qfluentwidgets import (
                             BodyLabel, 
                             StrongBodyLabel, 
                             HorizontalSeparator, 
-                            SpinBox
+                            SpinBox,
+                            SwitchButton
                         )
 
 from faster_whisper_GUI.config import SUBTITLE_FORMAT
@@ -39,6 +40,12 @@ class OutputPageNavigationInterface(NavigationBaseInterface):
             self.tableTab.closeDisplayModeComboBox.setCurrentIndex(param["closeDisplayMode"])
             self.SpinBox_min_speaker.setValue(param["whisperXMinSpeaker"] )
             self.SpinBox_max_speaker.setValue(param["whisperXMaxSpeaker"] )
+            self.combox_whisperx_backend.setCurrentIndex(
+                1 if param.get("whisperXBackend", "vendored") == "upstream" else 0
+            )
+            self.switchButton_refine_short_responses.setChecked(
+                param.get("whisperXRefineShortResponses", True)
+            )
             self.combox_output_format.setCurrentIndex(param["outputFormat"])
             self.combox_output_code.setCurrentIndex(param["outputEncoding"] )
 
@@ -54,6 +61,8 @@ class OutputPageNavigationInterface(NavigationBaseInterface):
         param["closeDisplayMode"] = self.tableTab.closeDisplayModeComboBox.currentIndex()
         param["whisperXMinSpeaker"] = self.SpinBox_min_speaker.value()
         param["whisperXMaxSpeaker"] = self.SpinBox_max_speaker.value()
+        param["whisperXBackend"] = "upstream" if self.combox_whisperx_backend.currentIndex() == 1 else "vendored"
+        param["whisperXRefineShortResponses"] = self.switchButton_refine_short_responses.isChecked()
         param["outputFormat"] = self.combox_output_format.currentIndex()
         param["outputEncoding"] = self.combox_output_code.currentIndex()
 
@@ -114,6 +123,17 @@ class OutputPageNavigationInterface(NavigationBaseInterface):
         self.SpinBox_max_speaker = SpinBox()
         self.SpinBox_max_speaker.setToolTip(self.tr("音频中需分出来的最多的说话人的人数"))
 
+        self.Label_whisperx_backend = BodyLabel(self.tr("WhisperX 后端"))
+        self.combox_whisperx_backend = ComboBox()
+        self.combox_whisperx_backend.addItems(["vendored", "upstream"])
+        self.combox_whisperx_backend.setCurrentIndex(0)
+        self.combox_whisperx_backend.setToolTip(self.tr("vendored 为当前稳定后端，upstream 使用独立环境中的新版 WhisperX"))
+
+        self.Label_refine_short_responses = BodyLabel(self.tr("短回应修正"))
+        self.switchButton_refine_short_responses = SwitchButton()
+        self.switchButton_refine_short_responses.setChecked(True)
+        self.switchButton_refine_short_responses.setToolTip(self.tr("二人对话中，将很短的插话回应修正为另一位说话人"))
+
         self.controlLabel_whisperx = StrongBodyLabel(self.tr("whisperX 参数控制"))
 
         self.tableTab.panelLayout.addSpacing(15)
@@ -127,6 +147,14 @@ class OutputPageNavigationInterface(NavigationBaseInterface):
         self.tableTab.panelLayout.addSpacing(4)
         self.tableTab.panelLayout.addWidget(self.Label_max_speaker)
         self.tableTab.panelLayout.addWidget(self.SpinBox_max_speaker)
+
+        self.tableTab.panelLayout.addSpacing(4)
+        self.tableTab.panelLayout.addWidget(self.Label_whisperx_backend)
+        self.tableTab.panelLayout.addWidget(self.combox_whisperx_backend)
+
+        self.tableTab.panelLayout.addSpacing(4)
+        self.tableTab.panelLayout.addWidget(self.Label_refine_short_responses)
+        self.tableTab.panelLayout.addWidget(self.switchButton_refine_short_responses)
         
         # =====================================================================================
         self.controlLabel_output = StrongBodyLabel(self.tr("输出参数控制"))

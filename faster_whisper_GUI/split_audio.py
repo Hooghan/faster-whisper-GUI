@@ -18,7 +18,7 @@ class SplitAudioFileWithSpeakersWorker(QThread):
 
         # 检查输出目录
         if output_path and not os.path.exists(self.output_path):
-            os.makedirs(self.output_path)
+            os.makedirs(self.output_path, exist_ok=True)
         
     def creatCommandLine(self, start_time, end_time, fileName, output_path, speaker):
 
@@ -64,38 +64,37 @@ class SplitAudioFileWithSpeakersWorker(QThread):
             # print(output_path)
             # 检查输出路径
             if not os.path.exists(output_path):
-                os.makedirs(output_path)
+                os.makedirs(output_path, exist_ok=True)
             
             # 数据标注文件
-            list_file = open(f"{output_path + '/' + '00_list.csv'}","w",encoding="utf8")
-            # 格式：vocal_path|speaker_name|language|text
-            list_file.write("vocal_path,    speaker_name,    language,    text\n")
+            with open(f"{output_path + '/' + '00_list.csv'}","w",encoding="utf8") as list_file:
+                # 格式：vocal_path|speaker_name|language|text
+                list_file.write("vocal_path,    speaker_name,    language,    text\n")
 
-            for segment in segments:
-                # if not segment.speaker : continue
-                
-                start_time = secondsToHMS(segment.start).replace(',','.')
-                end_time = secondsToHMS(segment.end).replace(',','.')
-                speaker = segment.speaker
+                for segment in segments:
+                    # if not segment.speaker : continue
+                    
+                    start_time = secondsToHMS(segment.start).replace(',','.')
+                    end_time = secondsToHMS(segment.end).replace(',','.')
+                    speaker = segment.speaker
 
-                if speaker is None or speaker == "":
-                    speaker = "UnKnownSpeaker"
+                    if speaker is None or speaker == "":
+                        speaker = "UnKnownSpeaker"
 
-                commandLine = self.creatCommandLine(start_time,end_time,path,output_path,speaker)
-                
-                # print(commandLine)
-                temp_process = subprocess.Popen(commandLine, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="utf-8", text=True,
-                                                creationflags=subprocess.CREATE_NO_WINDOW)
-                temp_process.wait()
+                    commandLine = self.creatCommandLine(start_time,end_time,path,output_path,speaker)
+                    
+                    # print(commandLine)
+                    temp_process = subprocess.Popen(commandLine, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="utf-8", text=True,
+                                                    creationflags=subprocess.CREATE_NO_WINDOW)
+                    temp_process.wait()
 
-                # 获取并整理文件名
-                output_fileName = self.getOutPutFileName(output_path, start_time, end_time, speaker)
-                output_fileName = output_fileName.replace('\\','/')
+                    # 获取并整理文件名
+                    output_fileName = self.getOutPutFileName(output_path, start_time, end_time, speaker)
+                    output_fileName = output_fileName.replace('\\','/')
 
-                # 输出标注信息
-                list_file.write(f"{output_fileName},{speaker},{self.language},{segment.text.strip().replace(',',' ')}\n")
+                    # 输出标注信息
+                    list_file.write(f"{output_fileName},{speaker},{self.language},{segment.text.strip().replace(',',' ')}\n")
 
-        list_file.close()
         # 完成后发送结果信号
         result = "over"
         self.result_signal.emit(result)

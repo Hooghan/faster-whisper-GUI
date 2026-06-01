@@ -1,5 +1,5 @@
 # coding:utf-8
-default_Huggingface_user_token = "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"
+default_Huggingface_user_token = ""
 
 Language_without_space = ["ja","zh","ko","yue"]
 Language_dict = {
@@ -128,6 +128,7 @@ Model_names = [
                 "large-v2",
                 "large-v3",
                 "large-v3-turbo",
+                "distil-large-v3.5",
                 "distil-large-v3",
                 "distil-large-v2",
                 "distil-medium.en",

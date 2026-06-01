@@ -1,7 +1,10 @@
 import os
+import gc
+import io
 from functools import lru_cache
 from typing import Optional, Union
 
+import av
 import ffmpeg
 import numpy as np
 import torch
@@ -21,6 +24,37 @@ N_FRAMES = exact_div(N_SAMPLES, HOP_LENGTH)  # 3000 frames in a mel spectrogram 
 N_SAMPLES_PER_TOKEN = HOP_LENGTH * 2  # the initial convolutions has stride 2
 FRAMES_PER_SECOND = exact_div(SAMPLE_RATE, HOP_LENGTH)  # 10ms per audio frame
 TOKENS_PER_SECOND = exact_div(SAMPLE_RATE, N_SAMPLES_PER_TOKEN)  # 20ms per audio token
+
+
+def decode_audio(input_file: str, sampling_rate: int = SAMPLE_RATE):
+    resampler = av.audio.resampler.AudioResampler(
+        format="s16",
+        layout="mono",
+        rate=sampling_rate,
+    )
+    raw_buffer = io.BytesIO()
+    dtype = None
+
+    with av.open(input_file, mode="r", metadata_errors="ignore") as container:
+        for frame in container.decode(audio=0):
+            for resampled_frame in resampler.resample(frame):
+                array = resampled_frame.to_ndarray()
+                dtype = array.dtype
+                raw_buffer.write(array)
+
+    for resampled_frame in resampler.resample(None):
+        array = resampled_frame.to_ndarray()
+        dtype = array.dtype
+        raw_buffer.write(array)
+
+    del resampler
+    gc.collect()
+
+    if dtype is None:
+        return np.array([], dtype=np.float32)
+
+    audio = np.frombuffer(raw_buffer.getbuffer(), dtype=dtype)
+    return audio.astype(np.float32) / 32768.0
 
 
 def load_audio(file: str, sr: int = SAMPLE_RATE):
@@ -47,6 +81,8 @@ def load_audio(file: str, sr: int = SAMPLE_RATE):
             .output("-", format="s16le", acodec="pcm_s16le", ac=1, ar=sr)
             .run(cmd=["ffmpeg", "-nostdin"], capture_stdout=True, capture_stderr=True)
         )
+    except FileNotFoundError:
+        return decode_audio(file, sampling_rate=sr)
     except ffmpeg.Error as e:
         raise RuntimeError(f"Failed to load audio: {e.stderr.decode()}") from e
 

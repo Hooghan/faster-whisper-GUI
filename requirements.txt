@@ -1,14 +1,15 @@
-pyside6-fluent-widgets>=1.3.2
-faster-whisper==0.10.0
-nuitka<=1.8.6
-pyAV
-ffmpeg-python
-pyAudio
-nltk
-CTranslate2>=3.21.0
-joblib==1.2.0
-pyside6 > 6.5.0
-torch==1.13.1+cu117
-torchaudio==0.13.1+cu117
-webvtt
-
+# Legacy dependency note
+#
+# Do not install this file for the continuation baseline.
+# It is intentionally kept as a marker because the original project used
+# `requirements.txt` as a broad, full-feature install entrypoint, but that file
+# pinned an old faster-whisper/Torch/CUDA-era stack that no longer matches the
+# verified ordinary transcription path.
+#
+# Use these files instead:
+# - requirements-dev-faster-whisper.txt for ordinary faster-whisper transcription
+# - requirements-dev-cuda-cu124.txt for the optional CUDA 12.4 Torch runtime
+# - requirements-dev-test.txt for repository tests
+#
+# A future full-feature WhisperX/Demucs dependency set should be rebuilt in a
+# separate requirements file after those features are verified.

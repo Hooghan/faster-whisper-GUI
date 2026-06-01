@@ -28,6 +28,7 @@ requirements_310.txt
 .vscode/
 cache/
 ffmpeg/
+user/*.local.json
 
 develop-eggs/
 *report*.xml
@@ -53,6 +54,7 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+!build_tools/*.spec
 
 # Installer logs
 pip-log.txt
@@ -93,6 +95,7 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+docs/superpowers/
 
 # PyBuilder
 .pybuilder/
@@ -145,6 +148,7 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.venv-whisperx-next/
 env/
 venv/
 ENV/

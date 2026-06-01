@@ -1,1 +1,1 @@
-import whisperx
+"""faster-whisper GUI package."""

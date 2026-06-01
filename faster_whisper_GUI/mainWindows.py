@@ -17,6 +17,7 @@ from PySide6.QtCore import (
                             QCoreApplication,
                             QObject
                             , Qt
+                            , QTimer
                             , Signal
                         )
 
@@ -32,8 +33,6 @@ from qfluentwidgets import (
 
 from faster_whisper.transcribe import TranscriptionInfo
 from faster_whisper.transcribe import Word
-
-import torch
 
 from .config import (
                     Task_list
@@ -51,17 +50,16 @@ from .transcribe import (
                     )
 
 from .fasterWhisperGuiIcon import FasterWhisperGUIIcon
-from .UI_MainWindows import UIMainWin
+from .UI_MainWindows import UIMainWin, get_local_config_path
 from .tableModel_segments_path_info import TableModel
 from .tableViewInterface import CustomTableView
-from .whisper_x import WhisperXWorker
-from .de_mucs import DemucsWorker
 # from .style_sheet import StyleSheet
 from .subtitleFileRead import readSRTFileToSegments, readJSONFileToSegments
 from .config import ENCODING_DICT
 
 from .util import (
                     outputWithDateTime,
+                    clear_temp_srt_files,
                     HMSToSeconds,
                     MSToSeconds,
                     WhisperParameters,
@@ -71,6 +69,22 @@ from .util import (
 from .split_audio import SplitAudioFileWithSpeakersWorker
 
 import opencc
+
+
+def clear_torch_cuda_cache():
+    try:
+        import torch
+    except ImportError:
+        return
+
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
+def should_auto_load_model(auto_load_enabled: bool, model_param: dict) -> bool:
+    if not auto_load_enabled:
+        return False
+    return bool(str(model_param.get("model_size_or_path", "")).strip())
 
 
 # =======================================================================================
@@ -148,10 +162,16 @@ class MainWindows(UIMainWin):
 
         self.singleAndSlotProcess()
 
-        if self.page_setting.switchButton_autoLoadModel.isChecked():
-            self.onModelLoadClicked()
+        QTimer.singleShot(0, self.autoLoadModelOnStartup)
         
         self.textOfParentClass()
+
+    def autoLoadModelOnStartup(self):
+        if should_auto_load_model(
+            self.page_setting.switchButton_autoLoadModel.isChecked(),
+            self.getParam_model(),
+        ):
+            self.onModelLoadClicked()
 
     def textOfParentClass(self) -> None:
         # to fixed bug of translator 
@@ -345,7 +365,8 @@ class MainWindows(UIMainWin):
             
     def getParamWhisperX(self) -> dict:
         dict_WhisperXParams = {}
-        dict_WhisperXParams["use_auth_token"] = self.page_setting.LineEdit_use_auth_token.text()
+        use_auth_token = self.page_setting.LineEdit_use_auth_token.text().strip()
+        dict_WhisperXParams["use_auth_token"] = use_auth_token if use_auth_token else None
 
         dict_WhisperXParams["min_speaker"] = int(self.page_output.SpinBox_min_speaker.text())
         dict_WhisperXParams["max_speaker"] = int(self.page_output.SpinBox_max_speaker.text())
@@ -356,6 +377,11 @@ class MainWindows(UIMainWin):
         if dict_WhisperXParams["min_speaker"] == 0 and dict_WhisperXParams["max_speaker"] == 0:
             dict_WhisperXParams["min_speaker"] = None
             dict_WhisperXParams["max_speaker"] = None
+
+        dict_WhisperXParams["refine_short_responses"] = (
+            self.page_output.switchButton_refine_short_responses.isChecked()
+        )
+        dict_WhisperXParams["backend"] = self.page_output.getParam().get("whisperXBackend", "vendored")
 
         return dict_WhisperXParams
 
@@ -1059,6 +1085,8 @@ class MainWindows(UIMainWin):
         self.setStateTool(title=self.__tr("WhisperX"), text=self.__tr("时间戳对齐"), status=False)
 
         if self.whisperXWorker is None:
+            from .whisper_x import WhisperXWorker
+
             self.whisperXWorker = WhisperXWorker(self.current_result, alignment=True, speaker_diarize=False, parent=self)
         else:
             self.whisperXWorker.result_segments_path_info = self.current_result
@@ -1090,6 +1118,7 @@ class MainWindows(UIMainWin):
         self.setPageOutButtonStatus()
 
         if self.whisperXWorker is None:
+            from .whisper_x import WhisperXWorker
 
             print(f"min_speaker: {whisperParams['min_speaker']}")
             print(f"max_speaker: {whisperParams['max_speaker']}")
@@ -1100,6 +1129,8 @@ class MainWindows(UIMainWin):
                                                 , use_auth_token=whisperParams["use_auth_token"]
                                                 , min_speaker=whisperParams["min_speaker"]
                                                 , max_speaker=whisperParams["max_speaker"]
+                                                , refine_short_responses=whisperParams["refine_short_responses"]
+                                                , backend=whisperParams["backend"]
                                                 , parent=self
                                             )
 
@@ -1110,6 +1141,8 @@ class MainWindows(UIMainWin):
             self.whisperXWorker.use_auth_token = whisperParams['use_auth_token']
             self.whisperXWorker.min_speaker = whisperParams['min_speaker']
             self.whisperXWorker.max_speaker = whisperParams['max_speaker']
+            self.whisperXWorker.refine_short_responses = whisperParams["refine_short_responses"]
+            self.whisperXWorker.backend = whisperParams["backend"]
             try:
                 self.whisperXWorker.signal_process_over.disconnect(self.aligmentOver)
             except Exception as e:
@@ -1347,8 +1380,7 @@ class MainWindows(UIMainWin):
         del self.demucsWorker
         self.demucsWorker = None
         
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+        clear_torch_cuda_cache()
             
 
     def demucsProcess(self):
@@ -1389,6 +1421,8 @@ class MainWindows(UIMainWin):
             print(f"{key}: {value}")
 
         if self.demucsWorker is None:
+            from .de_mucs import DemucsWorker
+
             self.demucsWorker = DemucsWorker(
                                             self,
                                             param["audio"],
@@ -1482,7 +1516,7 @@ class MainWindows(UIMainWin):
             self.raiseErrorInfoBar(self.__tr("卸载模型失败"), self.__tr("卸载模型失败，请在转写之前禁用温度回退配置"))
 
         # 清理缓存
-        torch.cuda.empty_cache()
+        clear_torch_cuda_cache()
 
     def outputAudioPartWithSpeaker(self):
         """
@@ -1667,17 +1701,13 @@ class MainWindows(UIMainWin):
             outputWithDateTime("Exit")
             
             if self.page_setting.switchButton_saveConfig.isChecked():
-                self.saveConfig(config_file_name=os.path.abspath(r'./fasterWhisperGUIConfig.json'))
+                self.saveConfig(config_file_name=os.path.abspath(get_local_config_path()))
             
             if self.page_setting.switchButton_autoClearTempFiles.isChecked():
                 try:
-                    temp_list = os.listdir(r"./temp")
-                    if len(temp_list) > 0:
-                        temp_dir = os.path.abspath(r"./temp")
-                        temp_cmd = temp_dir + "\\" + "*.srt"
-                        os.system(f"del {temp_cmd}")
+                    cleared = clear_temp_srt_files("./temp")
+                    if cleared > 0:
                         print("cleared temp files")
-                        
                     else:
                         print("no temp files to clear")
 
@@ -1726,6 +1756,11 @@ class MainWindows(UIMainWin):
         outputWithDateTime("SaveConfigFile")
         model_param = self.page_model.getParam()
         setting_param = self.page_setting.getParam()    
+        is_local_private_config = os.path.abspath(config_file_name) == os.path.abspath(get_local_config_path())
+        if is_local_private_config:
+            setting_param["huggingface_user_token"] = self.page_setting.LineEdit_use_auth_token.text().strip()
+        else:
+            setting_param["huggingface_user_token"] = ""
         demucs_param = self.page_demucs.getParam()
         Transcription_param = self.page_transcribes.getParam()
         output_whisperX_param = self.page_output.getParam()
@@ -1741,6 +1776,7 @@ class MainWindows(UIMainWin):
                         "output_whisperX":output_whisperX_param
                     }
         
+        os.makedirs(os.path.dirname(os.path.abspath(config_file_name)), exist_ok=True)
         with open(os.path.abspath(config_file_name),'w',encoding='utf8')as fp:
             json.dump(
                         config_json,

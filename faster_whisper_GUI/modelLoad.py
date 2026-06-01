@@ -1,9 +1,29 @@
 # coding:utf-8
 
 # from threading import Thread
+import importlib
 from typing import (List, Optional, TypedDict, Union)
 from PySide6.QtCore import QThread, Signal
 from faster_whisper import WhisperModel
+
+
+def prepare_cuda_runtime(device: str):
+    if device != "cuda":
+        return
+
+    try:
+        importlib.import_module("torch")
+    except ImportError:
+        return
+
+
+def set_v3_mel_filters(model: WhisperModel):
+    extractor = model.feature_extractor
+    extractor.mel_filters = extractor.get_mel_filters(
+        extractor.sampling_rate,
+        extractor.n_fft,
+        n_mels=128,
+    ).astype("float32")
 
 
 class modelParamDict(TypedDict):
@@ -55,7 +75,7 @@ class LoadModelWorker(QThread):
         if self.use_v3_model:
             # 修正 V3 模型的 mel 滤波器组参数
             print("\n[Using V3 model, modify  number of mel-filters to 128]")
-            self.model.feature_extractor.mel_filters = self.model.feature_extractor.get_mel_filters(self.model.feature_extractor.sampling_rate, self.model.feature_extractor.n_fft, n_mels=128)
+            set_v3_mel_filters(self.model)
 
         self.isRunning = False
         # return self.model
@@ -76,6 +96,8 @@ class LoadModelWorker(QThread):
 
             # self.download_root = self.download_root.replace("\\", "/")
             # self.download_root = self.download_root.replace(" ", "\ ")
+
+            prepare_cuda_runtime(self.device)
 
             model = WhisperModel(
                                     model_size_or_path, 

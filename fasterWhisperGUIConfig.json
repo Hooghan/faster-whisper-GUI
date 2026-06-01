@@ -8,7 +8,7 @@
     "model_param": {
         "localModel": true,
         "onlineModel": false,
-        "model_path": "F:/WhisperModels/faster-whisper/large-v3-turbo",
+        "model_path": "",
         "modelName": 11,
         "use_v3_model": true,
         "device": 1,
@@ -16,7 +16,7 @@
         "preciese": 4,
         "thread_num": "4",
         "num_worker": "1",
-        "download_root": "C:/Users/12059/.cache/huggingface/hub",
+        "download_root": "",
         "local_files_only": false
     },
     "vad_param": {
@@ -29,9 +29,9 @@
     },
     "setting": {
         "saveConfig": true,
-        "autoLoadModel": false,
+        "autoLoadModel": true,
         "language": 0,
-        "huggingface_user_token": "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",
+        "huggingface_user_token": "",
         "autoGoToOutputPage": 2,
         "autoClearTempFiles": true,
         "themeColor": "#e64ecf"
@@ -75,10 +75,12 @@
         "tabMovable": true,
         "tabScrollable": false,
         "tabShadowEnabled": false,
-        "tabMaxWidth": 259,
+        "tabMaxWidth": 262,
         "closeDisplayMode": 0,
         "whisperXMinSpeaker": 3,
         "whisperXMaxSpeaker": 3,
+        "whisperXBackend": "vendored",
+        "whisperXRefineShortResponses": true,
         "outputFormat": 0,
         "outputEncoding": 1
     }

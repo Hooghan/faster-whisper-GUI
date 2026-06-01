@@ -1,6 +1,7 @@
 # coding:utf-8
 
 import datetime
+from pathlib import Path
 
 from typing import List, TypedDict, Union
 
@@ -51,6 +52,33 @@ def outputWithDateTime(text:str):
     dateTime_ = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
     print(f"\n=========={dateTime_}==========")
     print(f"=========={text}==========\n")
+
+
+def ensure_directory(path: str | Path) -> Path:
+    directory = Path(path)
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory
+
+
+def ensure_file(path: str | Path) -> Path:
+    file_path = Path(path)
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    file_path.touch(exist_ok=True)
+    return file_path
+
+
+def clear_temp_srt_files(temp_dir: str | Path = "./temp") -> int:
+    temp_path = Path(temp_dir)
+    if not temp_path.exists():
+        return 0
+
+    cleared = 0
+    for subtitle_file in temp_path.iterdir():
+        if subtitle_file.is_file() and subtitle_file.suffix.lower() == ".srt":
+            subtitle_file.unlink()
+            cleared += 1
+    return cleared
+
 
 # ---------------------------------------------------------------------------------------------------------------------------
 def secondsToHMS(t) -> str:

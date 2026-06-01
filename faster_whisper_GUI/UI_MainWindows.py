@@ -2,7 +2,8 @@
 # coding:utf-8
 
 import os
-# from pathlib import Path
+import sys
+from pathlib import Path
 
 from PySide6.QtCore import  ( 
                                 QCoreApplication,
@@ -31,6 +32,7 @@ from qfluentwidgets import (
                             , Theme
                             , FluentIcon
                             , NavigationItemPosition
+                            , qconfig
                             
                         )
 
@@ -64,10 +66,61 @@ from .vadPageNavigationInterface import VADNavigationInterface
 from .processPageNavigationInterface import ProcessPageNavigationInterface
 from .outputPageNavigationInterface import OutputPageNavigationInterface
 from .homePageNavigationInterface import HomePageNavigationinterface
-from .demucsPageNavigationInterface import DemucsPageNavigation
 from .aboutPageNavigationInterface import AboutPageNavigationInterface
 from .fasterWhisperGuiIcon import FasterWhisperGUIIcon
 from .settingPageNavigation import SettingPageNavigationInterface
+
+
+DEFAULT_CONFIG_PATH = Path("fasterWhisperGUIConfig.json")
+LOCAL_CONFIG_PATH = Path("user") / "fasterWhisperGUIConfig.local.json"
+QFLUENTWIDGETS_LOCAL_CONFIG_PATH = Path("user") / "qfluentwidgets.local.json"
+
+
+def is_packaged_app() -> bool:
+    return bool(getattr(sys, "frozen", False))
+
+
+def get_packaged_internal_path() -> Path:
+    return Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
+
+
+def get_writable_app_path() -> Path:
+    if is_packaged_app():
+        return Path(sys.executable).resolve().parent
+    return Path.cwd()
+
+
+def get_default_config_path() -> Path:
+    if is_packaged_app():
+        return get_packaged_internal_path() / DEFAULT_CONFIG_PATH
+    return DEFAULT_CONFIG_PATH
+
+
+def get_local_config_path() -> Path:
+    if is_packaged_app():
+        return get_writable_app_path() / LOCAL_CONFIG_PATH
+    return LOCAL_CONFIG_PATH
+
+
+def get_qfluentwidgets_local_config_path() -> Path:
+    if is_packaged_app():
+        return get_writable_app_path() / QFLUENTWIDGETS_LOCAL_CONFIG_PATH
+    return QFLUENTWIDGETS_LOCAL_CONFIG_PATH
+
+
+def configure_qfluentwidgets_local_config() -> None:
+    local_config_path = get_qfluentwidgets_local_config_path()
+    local_config_path.parent.mkdir(parents=True, exist_ok=True)
+    qconfig.file = local_config_path
+    qconfig._cfg.file = local_config_path
+
+
+def get_startup_config_path() -> Path:
+    local_config_path = get_local_config_path()
+    if local_config_path.exists():
+        return local_config_path
+    return get_default_config_path()
+
 
 class aa(QWidget):
     def __init__(self, parent: QWidget | None = ..., f: Qt.WindowType = ...) -> None:
@@ -151,7 +204,7 @@ class UIMainWin(FramelessMainWindow):
         if self.setting != {}:
             self.page_setting.setParam(self.setting)
         
-        if self.demucs != {}:
+        if self.demucs != {} and self.page_demucs is not None:
             self.page_demucs.setParam(self.demucs)
 
         if self.Transcription_param != {}:
@@ -165,6 +218,7 @@ class UIMainWin(FramelessMainWindow):
     
     def __init__(self, parent=None, f=None) -> None:
         super().__init__()
+        configure_qfluentwidgets_local_config()
 
         # self.setWindowFlags(Qt.FramelessWindowHint)
         # self.setAttribute(Qt.WA_TranslucentBackground)  
@@ -186,7 +240,7 @@ class UIMainWin(FramelessMainWindow):
         self.initWin()
 
         # 读配置文件
-        self.readConfigJson(r"./fasterWhisperGUIConfig.json")
+        self.readConfigJson(str(get_startup_config_path()))
         # 设置配置
         self.setConfig()
 
@@ -274,9 +328,14 @@ class UIMainWin(FramelessMainWindow):
         self.addSubInterface(self.page_home, "pageHome", self.tr("Home"), icon=FluentIcon.HOME)
         self.pages.append(self.page_home)
 
-        self.page_demucs = DemucsPageNavigation(self)
-        self.addSubInterface(self.page_demucs, "pageDecums", self.tr("声乐分离"), icon=FasterWhisperGUIIcon.DEMUCS)
-        self.pages.append(self.page_demucs)
+        try:
+            from .demucsPageNavigationInterface import DemucsPageNavigation
+        except ImportError:
+            self.page_demucs = None
+        else:
+            self.page_demucs = DemucsPageNavigation(self)
+            self.addSubInterface(self.page_demucs, "pageDecums", self.tr("声乐分离"), icon=FasterWhisperGUIIcon.DEMUCS)
+            self.pages.append(self.page_demucs)
 
         self.page_model = ModelNavigationInterface(self)
         self.addSubInterface(self.page_model, "pageModelParameter", self.tr("模型参数"), icon=FluentIcon.BOOK_SHELF)

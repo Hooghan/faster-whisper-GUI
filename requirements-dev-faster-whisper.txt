@@ -1,0 +1,14 @@
+faster-whisper==1.2.1
+ctranslate2>=4.7.2,<4.8
+huggingface-hub>=1.16,<1.17
+tokenizers>=0.22,<0.24
+onnxruntime>=1.26,<1.27
+tqdm>=4.67,<5
+PySide6>=6.10,<6.11
+PySide6-Fluent-Widgets>=1.11,<1.12
+av>=17,<18
+ffmpeg-python==0.2.0
+requests>=2.34,<3
+opencc-python-reimplemented==0.1.7
+webvtt-py==0.5.1
+numpy>=2,<3
