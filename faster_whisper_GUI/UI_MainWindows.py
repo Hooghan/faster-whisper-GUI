@@ -52,9 +52,10 @@ import json
 
 from .version import (
                         __version__
+                        , __release_name__
                         , __FasterWhisper_version__
                         , __WhisperX_version__
-                    )
+                        )
 
 from .style_sheet import StyleSheet
 from .translator import TRANSLATOR
@@ -271,7 +272,7 @@ class UIMainWin(FramelessMainWindow):
         self.setTitleBar(StandardTitleBar(self))
         self.titleBar.setAttribute(Qt.WA_StyledBackground)
 
-        self.setWindowTitle(f"FasterWhisperGUI-{__version__}--fw-{__FasterWhisper_version__}--WhisperX-{__WhisperX_version__}")
+        self.setWindowTitle(f"{__release_name__}--fw-{__FasterWhisper_version__}--WhisperX-{__WhisperX_version__}")
         
         self.setWindowIcon(QIcon(":/resource/Image/microphone.png"))
         

@@ -3,6 +3,7 @@ from importlib import metadata
 from faster_whisper_GUI.version import (
     __FasterWhisper_version__,
     __WhisperX_version__,
+    __release_name__,
     __version__,
 )
 
@@ -18,6 +19,10 @@ def test_faster_whisper_display_version_is_not_stale_legacy_value():
 
 def test_app_display_version_marks_continuation_build():
     assert __version__ == "0.8.6-dev"
+
+
+def test_release_name_marks_unofficial_continuation_build():
+    assert __release_name__ == "FasterWhisperGUI 0.8.6-dev continuation build"
 
 
 def test_whisperx_display_version_marks_vendored_code():

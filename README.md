@@ -2,6 +2,12 @@
 
     faster-whisper、whisperX，GUI with PySide6
 
+This fork continues maintenance from `CheshireCC/faster-whisper-GUI` `0.8.5`.
+The current build is `FasterWhisperGUI 0.8.6-dev continuation build`, an
+unofficial development build for testing the updated source-run and Windows
+packaging path. It keeps the original application name, but it is not an
+official upstream stable release.
+
 - ## model download
 
   - https://huggingface.co/models?sort=trending&search=faster-whisper
@@ -246,6 +252,8 @@ context and still needs extra revision handling under pyannote 4:
 
 The current verified continuation state is summarized in
 [`docs/continuation-status.md`](docs/continuation-status.md).
+Release notes for the current continuation build are in
+[`docs/release-notes-0.8.6-dev.md`](docs/release-notes-0.8.6-dev.md).
 
 ### Dependency entrypoints
 

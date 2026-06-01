@@ -9,6 +9,8 @@ def test_continuation_status_documents_verified_ordinary_transcription_baseline(
     assert "Last updated: 2026-06-01" in STATUS_TEXT
     assert "ordinary faster-whisper transcription" in STATUS_TEXT
     assert "0.8.6-dev" in STATUS_TEXT
+    assert "FasterWhisperGUI 0.8.6-dev continuation build" in STATUS_TEXT
+    assert "official upstream stable release" in STATUS_TEXT
     assert "Startup model autoload is enabled by default" in STATUS_TEXT
     assert "autoload switch is kept independent" in STATUS_TEXT
     assert "faster-whisper==1.2.1" in STATUS_TEXT
@@ -84,7 +86,7 @@ def test_continuation_status_documents_demucs_cuda_subprocess_smoke_test():
 
 def test_continuation_status_documents_verification_command():
     assert '.\\.venv\\Scripts\\python.exe -m pytest tests -q -p no:cacheprovider' in STATUS_TEXT
-    assert "The current verified result is `168 passed`." in STATUS_TEXT
+    assert "The current verified result is `169 passed`." in STATUS_TEXT
 
 
 def test_continuation_status_documents_source_run_release_candidate_scope():
@@ -129,6 +131,8 @@ def test_continuation_status_documents_safe_temp_cleanup():
 
 def test_readme_links_to_continuation_status():
     assert "docs/continuation-status.md" in README_TEXT
+    assert "docs/release-notes-0.8.6-dev.md" in README_TEXT
+    assert "unofficial development build" in README_TEXT
     assert "speaker column" in README_TEXT
     assert "SPEAKER_00" in README_TEXT
     assert "CPU diarization smoke tests passed" in README_TEXT

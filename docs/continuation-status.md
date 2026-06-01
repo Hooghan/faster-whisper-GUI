@@ -8,9 +8,10 @@ The current continuation baseline verifies ordinary faster-whisper transcription
 from source on Windows. The source-run dependency entrypoint is
 `requirements-dev-faster-whisper.txt`.
 
-The continuation build displays app version `0.8.6-dev` in the title bar. This
-marks the source continuation work as newer than the original `0.8.5` release
-without claiming a packaged stable release yet.
+The continuation build displays
+`FasterWhisperGUI 0.8.6-dev continuation build` in the title bar. This marks the
+source continuation work as newer than the original `0.8.5` release without
+claiming to be an official upstream stable release.
 
 Startup model autoload is enabled by default. The GUI waits until startup is
 settled, then loads the saved model only when the saved model target is
@@ -305,7 +306,7 @@ Run the current test suite from the repository root:
 .\.venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider
 ```
 
-The current verified result is `168 passed`.
+The current verified result is `169 passed`.
 
 For a manual smoke test, launch `launch-source-gui.cmd`, confirm the saved model
 autoloads, and run one ordinary faster-whisper transcription. If no saved model
