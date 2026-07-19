@@ -32,9 +32,25 @@
 - 打包版 GUI：已測試啟動、模型自動載入、啟用 VAD 的一般轉寫、
   WhisperX vendored 路徑與 Demucs smoke test。
 
-### Windows 打包檔案
+### Windows 下載與安裝方式
 
-Windows 打包檔案較大，因此 release asset 拆成兩個分卷：
+本版本提供兩種 Windows 使用方式。
+
+#### 方式一：下載安裝包，點擊安裝
+
+建議一般使用者下載：
+
+- `FasterWhisperGUI-0.8.6-dev-Setup.exe`
+
+下載後直接執行安裝。安裝程式會把 FasterWhisperGUI 安裝到目前使用者的
+程式目錄，並建立開始功能表捷徑；安裝完成後可直接啟動。
+
+安裝包不需要手動合併分卷，也不需要透過 PowerShell 安裝。
+
+#### 方式二：下載免安裝分卷 ZIP，用 PowerShell 合併
+
+如果不想使用安裝程式，也可以下載免安裝版。因為 Windows 打包檔案較大，
+免安裝版 release asset 拆成兩個分卷：
 
 - `FasterWhisperGUI-0.8.6-dev-continuation-build.zip.part01`
 - `FasterWhisperGUI-0.8.6-dev-continuation-build.zip.part02`
@@ -48,6 +64,11 @@ cmd /c copy /b FasterWhisperGUI-0.8.6-dev-continuation-build.zip.part01+FasterWh
 
 合併後解壓縮 `FasterWhisperGUI-0.8.6-dev-continuation-build.zip`，執行
 `FasterWhisperGUI.exe`。
+
+#### 應該選哪一種？
+
+- 想要像一般 Windows 軟體一樣點擊安裝：選 `.exe` 安裝包。
+- 想要免安裝、可自行放到指定資料夾：選分卷 ZIP，並用 PowerShell 合併。
 
 ### 注意事項
 
@@ -92,10 +113,27 @@ official upstream stable release.
   WhisperX vendored paths, and Demucs smoke tests were exercised during the
   continuation work.
 
-## Windows Package Assets
+## Windows Download And Installation
 
-The packaged Windows build is large, so the release asset is split into parts
-for GitHub Releases:
+This release provides two Windows options.
+
+### Option 1: Download And Run The Installer
+
+Recommended for most users:
+
+- `FasterWhisperGUI-0.8.6-dev-Setup.exe`
+
+Download the installer and run it directly. It installs FasterWhisperGUI into
+the current user's program directory, creates Start Menu shortcuts, and can
+launch the app after installation.
+
+The installer does not require manually joining split ZIP files, and it does
+not require installing through PowerShell.
+
+### Option 2: Download The Portable Split ZIP And Join It With PowerShell
+
+If you prefer a portable package, download the split ZIP assets. The portable
+Windows package is large, so it is split into parts for GitHub Releases:
 
 - `FasterWhisperGUI-0.8.6-dev-continuation-build.zip.part01`
 - `FasterWhisperGUI-0.8.6-dev-continuation-build.zip.part02`
@@ -109,6 +147,12 @@ cmd /c copy /b FasterWhisperGUI-0.8.6-dev-continuation-build.zip.part01+FasterWh
 
 Then extract `FasterWhisperGUI-0.8.6-dev-continuation-build.zip` and run
 `FasterWhisperGUI.exe`.
+
+### Which Option Should I Choose?
+
+- Choose the `.exe` installer if you want the normal Windows install flow.
+- Choose the split ZIP if you want a portable folder that you can place
+  wherever you prefer.
 
 ## Notes
 
