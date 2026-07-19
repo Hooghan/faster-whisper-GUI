@@ -29,6 +29,10 @@ requirements_310.txt
 cache/
 ffmpeg/
 user/*.local.json
+tools/inno-download/
+tools/InnoSetup6/
+tools/gh-portable-*/
+tools/gh_*_windows_amd64.zip
 
 develop-eggs/
 *report*.xml
@@ -73,6 +77,7 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+.codex-pytest-tmp/
 cover/
 
 # Translations
