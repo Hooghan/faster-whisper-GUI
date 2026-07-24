@@ -3,10 +3,12 @@
 # from threading import Thread
 from typing import (List, Optional, TypedDict, Union)
 from PySide6.QtCore import QThread, Signal
-from faster_whisper import WhisperModel
+
+from .asr_model_factory import FASTER_WHISPER_BACKEND, create_asr_model
 
 
 class modelParamDict(TypedDict):
+    backend: str
     model_size_or_path: str
     device: str
     device_index: Union[int, List[int]] 
@@ -19,10 +21,12 @@ class modelParamDict(TypedDict):
 class LoadModelWorker(QThread):
     setStatusSignal = Signal(bool)
     loadModelOverSignal = Signal(bool)
+    errorSignal = Signal(str)
 
     def __init__(self, modelParam: modelParamDict, use_v3_model:bool = False , parent = None):
         super().__init__(parent=parent)
         self.isRunning = False
+        self.backend: str = modelParam.get("backend", FASTER_WHISPER_BACKEND)
         self.model_size_or_path: str = modelParam["model_size_or_path"]
         self.device: str = modelParam["device"]
         self.device_index: Union[int, List[int]] = modelParam["device_index"]
@@ -52,7 +56,7 @@ class LoadModelWorker(QThread):
             #     pass
                 # self.model = future.result()
         
-        if self.use_v3_model:
+        if self.use_v3_model and self.backend == FASTER_WHISPER_BACKEND:
             # 修正 V3 模型的 mel 滤波器组参数
             print("\n[Using V3 model, modify  number of mel-filters to 128]")
             self.model.feature_extractor.mel_filters = self.model.feature_extractor.get_mel_filters(self.model.feature_extractor.sampling_rate, self.model.feature_extractor.n_fft, n_mels=128)
@@ -77,9 +81,10 @@ class LoadModelWorker(QThread):
             # self.download_root = self.download_root.replace("\\", "/")
             # self.download_root = self.download_root.replace(" ", "\ ")
 
-            model = WhisperModel(
-                                    model_size_or_path, 
-                                    device=self.device, 
+            model = create_asr_model(
+                                    backend=self.backend,
+                                    model_size_or_path=model_size_or_path,
+                                    device=self.device,
                                     device_index=self.device_index,
                                     compute_type=self.compute_type,
                                     cpu_threads=self.cpu_threads,
@@ -89,25 +94,28 @@ class LoadModelWorker(QThread):
                                 )
         except Exception as e:
             model = None
+            self.errorSignal.emit(str(e))
             self.setStatusSignal.emit(False)
             raise e
 
         try:
             print("\nLoad over")
             print(self.model_size_or_path)
-            print(f"{'max_length: ':23}",model.max_length)
-            print(f"{'num_samples_per_token: ':23}", model.num_samples_per_token)
-            print("time_precision: ", model.time_precision)
-            print("tokens_per_second: ", model.tokens_per_second)
-            print("input_stride: ", model.input_stride)
+            if self.backend == FASTER_WHISPER_BACKEND:
+                print(f"{'max_length: ':23}",model.max_length)
+                print(f"{'num_samples_per_token: ':23}", model.num_samples_per_token)
+                print("time_precision: ", model.time_precision)
+                print("tokens_per_second: ", model.tokens_per_second)
+                print("input_stride: ", model.input_stride)
+            else:
+                print("backend: FunASR / SenseVoice")
+                print("device: ", model.device)
 
         except Exception as e:
-            
+            self.errorSignal.emit(str(e))
             self.setStatusSignal.emit(False)
-            
             raise e
         
         self.setStatusSignal.emit(True)
 
         return model
-

@@ -21,6 +21,7 @@
   - [pyside6-fluent-widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets)
   - [faster-whisper](https://github.com/guillaumekln/faster-whisper)
   - [whisperX](https://github.com/m-bain/whisperX)
+  - Optional [FunASR / SenseVoice backend](./docs/funasr_sensevoice_backend.md)
   - [HuggingFace models download](https://huggingface.co/models)
   - [Demucs](https://github.com/facebookresearch/demucs)
   - more and better AVE ：

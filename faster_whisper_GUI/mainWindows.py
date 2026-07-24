@@ -42,6 +42,7 @@ from .config import (
                 )
 
 from .modelLoad import LoadModelWorker
+from .asr_model_factory import recommended_num_workers
 from .convertModel import ConvertModel
 from .transcribe import (
                         TranscribeWorker
@@ -213,7 +214,9 @@ class MainWindows(UIMainWin):
                         )
             return
 
-        if os.path.isdir(model_size_or_path):
+        if model_param["backend"] == "funasr":
+            content = self.__tr("加载 FunASR / SenseVoice 模型")
+        elif os.path.isdir(model_size_or_path):
             content = self.__tr("加载本地模型")
         else:
             content = self.__tr("在线下载模型")
@@ -232,6 +235,7 @@ class MainWindows(UIMainWin):
         infoBar.show()
 
         param_for_model_load = {
+                                "backend":model_param["backend"],
                                 "model_size_or_path":model_param["model_size_or_path"],
                                 "device":model_param["device"],
                                 "device_index":model_param["device_index"],
@@ -243,6 +247,8 @@ class MainWindows(UIMainWin):
                             }
         
         self.loadModelWorker = LoadModelWorker(param_for_model_load, use_v3_model=model_param["use_v3_model"] ,parent = self)
+        self.model_load_error = ""
+        self.loadModelWorker.errorSignal.connect(self.setModelLoadError)
         self.loadModelWorker.setStatusSignal.connect(self.loadModelResult)
         self.loadModelWorker.setStatusSignal.connect(self.setModelStatusLabelTextForAll)
         self.setStateTool(self.__tr("加载模型"), self.__tr("模型加载中，请稍候"), False)
@@ -253,7 +259,10 @@ class MainWindows(UIMainWin):
         获取模型参数
         """
         
-        if self.page_model.model_local_RadioButton.isChecked():
+        backend = "funasr" if self.page_model.backend_combox.currentIndex() == 1 else "faster-whisper"
+        if backend == "funasr":
+            model_size_or_path = self.page_model.funasr_model_combox.currentText().strip()
+        elif self.page_model.model_local_RadioButton.isChecked():
             model_size_or_path = self.page_model.lineEdit_model_path.text()
         else:
             model_size_or_path = self.page_model.combox_online_model.currentText()
@@ -271,6 +280,7 @@ class MainWindows(UIMainWin):
         use_v3_model: bool = self.page_model.switchButton_use_v3.isChecked()
 
         model_dict : dict = {
+                    "backend" : backend,
                     "model_size_or_path" : model_size_or_path,
                     "device" : device,
                     "device_index" : device_index,
@@ -279,7 +289,7 @@ class MainWindows(UIMainWin):
                     "num_workers" : num_workers,
                     "download_root" : download_root,
                     "local_files_only" : local_files_only,
-                    "use_v3_model" : use_v3_model
+                    "use_v3_model" : use_v3_model if backend == "faster-whisper" else False
         }
 
         return model_dict
@@ -425,6 +435,7 @@ class MainWindows(UIMainWin):
                 num_worker = int(self.page_model.LineEdit_num_workers.text())
             except Exception as e:
                 num_worker = 1
+            num_worker = recommended_num_workers(self.FasterWhisperModel, num_worker)
 
             # 创建进程
             self.log.write(f"create transcribe process with {num_worker} workers\n")
@@ -437,6 +448,7 @@ class MainWindows(UIMainWin):
                                                     )
             
             self.transcribe_thread.signal_process_over.connect(self.transcribeOver)
+            self.transcribe_thread.signal_error.connect(self.transcribeError)
 
             # 修改按钮 UI
             self.page_process.button_process.setText(self.__tr("取消"))
@@ -620,6 +632,9 @@ class MainWindows(UIMainWin):
                                 
                                 word = Word(word.start,word.end,new_word,word.probability)
                                 # word.word = new_word
+
+    def transcribeError(self, message: str):
+        self.raiseErrorInfoBar(title=self.__tr("错误"), content=message)
 
     def transcribeOver(self, segments_path_info:list):
         # self.button_process.clicked.disconnect(self.cancelTrancribe)
@@ -948,8 +963,11 @@ class MainWindows(UIMainWin):
             self.setStateTool(text=self.__tr("结束"), status=True)
             self.raiseErrorInfoBar(
                                     title=self.__tr("错误"),
-                                    content=self.__tr("加载失败，退出并检查 fasterWhispergui.log 文件可能会获取错误信息。")
+                                    content=self.model_load_error or self.__tr("加载失败，退出并检查 fasterWhispergui.log 文件可能会获取错误信息。")
                                 )
+
+    def setModelLoadError(self, message: str):
+        self.model_load_error = message
 
     def setModelStatusLabelTextForAll(self, status:bool):
         
@@ -1756,4 +1774,3 @@ class MainWindows(UIMainWin):
             width = self.width()
             self.stateTool.move(width-width_tool-30, 45)
         return 
-    

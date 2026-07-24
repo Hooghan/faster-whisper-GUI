@@ -60,6 +60,7 @@ class ModelNavigationInterface(NavigationBaseInterface):
         self.SignalAndSlotConnect()
     
     def SignalAndSlotConnect(self):
+        self.backend_combox.currentIndexChanged.connect(self.setBackendLayout)
         self.model_local_RadioButton.clicked.connect(self.setModelLocationLayout)
         self.model_online_RadioButton.clicked.connect(self.setModelLocationLayout)
         
@@ -75,6 +76,22 @@ class ModelNavigationInterface(NavigationBaseInterface):
         for i in range(num_widgets_layout):
             widget = self.hBoxLayout_online_model.itemAt(i).widget()
             widget.setEnabled(self.model_online_RadioButton.isChecked())
+
+    def setBackendLayout(self, *_):
+        is_funasr = self.backend_combox.currentIndex() == 1
+        self.paramItemWidget_funasr_model.setVisible(is_funasr)
+        self.model_local_RadioButton.setEnabled(not is_funasr)
+        self.model_online_RadioButton.setEnabled(not is_funasr)
+
+        if is_funasr:
+            for layout in (self.hBoxLayout_local_model, self.hBoxLayout_online_model):
+                for i in range(layout.count()):
+                    layout.itemAt(i).widget().setEnabled(False)
+        else:
+            self.setModelLocationLayout()
+
+        for widget in self.faster_whisper_only_widgets:
+            widget.setEnabled(not is_funasr)
 
     def setupUI(self):
         self.layout_button_model_lodar = QVBoxLayout()
@@ -96,6 +113,27 @@ class ModelNavigationInterface(NavigationBaseInterface):
         self.layout_button_model_lodar.addWidget(self.button_model_lodar)
         self.layout_button_model_lodar.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.addLayout(self.layout_button_model_lodar)
+
+
+        self.backend_combox = ComboBox()
+        self.backend_combox.addItems(["faster-whisper", "FunASR / SenseVoice"])
+        self.backend_combox.setCurrentIndex(0)
+        self.paramItemWidget_backend = ParamWidget(
+            self.__tr("ASR 后端"),
+            self.__tr("选择 faster-whisper 或可选的 FunASR / SenseVoice 后端。"),
+            self.backend_combox,
+        )
+        self.addWidget(self.paramItemWidget_backend)
+
+        self.funasr_model_combox = EditableComboBox()
+        self.funasr_model_combox.addItems(["iic/SenseVoiceSmall"])
+        self.funasr_model_combox.setCurrentIndex(0)
+        self.paramItemWidget_funasr_model = ParamWidget(
+            self.__tr("FunASR 模型"),
+            self.__tr("输入 ModelScope 上的 FunASR 兼容模型名称。"),
+            self.funasr_model_combox,
+        )
+        self.addWidget(self.paramItemWidget_funasr_model)
 
 
         # ==========================================================================================================
@@ -256,6 +294,16 @@ class ModelNavigationInterface(NavigationBaseInterface):
         # ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         for i,item in enumerate(GridLayout_model_param_widgets_list):
             GridLayout_model_param.addWidget(item, i,0)
+
+        self.faster_whisper_only_widgets = [
+            self.paramItemWidget_use_v3,
+            self.paramItemWidget_preciese,
+            self.paramItemWidget_cpu_threads,
+            self.paramItemWidget_num_workers,
+            self.paramItemWidget_download_root,
+            self.paramItemWidget_local_files_only,
+        ]
+        self.setBackendLayout()
         
         # ==================================================================================================================================================================================================
         hBoxLayout_model_convert = QHBoxLayout()
@@ -284,6 +332,10 @@ class ModelNavigationInterface(NavigationBaseInterface):
 
         
     def setParam(self, param:dict):
+        self.backend_combox.setCurrentIndex(int(param.get("backend", 0)))
+        self.funasr_model_combox.setCurrentText(
+            param.get("funasrModel", "iic/SenseVoiceSmall")
+        )
         self.model_local_RadioButton.setChecked(param["localModel"])
         self.model_online_RadioButton.setChecked(param["onlineModel"])
 
@@ -300,9 +352,12 @@ class ModelNavigationInterface(NavigationBaseInterface):
         self.LineEdit_num_workers.setText(param["num_worker"])
         self.LineEdit_download_root.setText(param["download_root"])
         self.switchButton_local_files_only.setChecked(param["local_files_only"] )
+        self.setBackendLayout()
 
     def getParam(self):
         param = {}
+        param["backend"] = self.backend_combox.currentIndex()
+        param["funasrModel"] = self.funasr_model_combox.currentText().strip()
         param["localModel"] = self.model_local_RadioButton.isChecked()
         param["onlineModel"] = self.model_online_RadioButton.isChecked()
         param["model_path"] = self.lineEdit_model_path.text()
