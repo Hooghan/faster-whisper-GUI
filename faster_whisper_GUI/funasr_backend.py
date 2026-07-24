@@ -9,8 +9,12 @@ export code.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Iterable, Iterator
+
+
+SENSEVOICE_TAG_RE = re.compile(r"<\|[^|>]+\|>")
 
 
 @dataclass
@@ -44,13 +48,49 @@ def normalize_funasr_language(language: str | None) -> str:
 
 
 def _timestamp_to_seconds(value: Any) -> float:
-    value = float(value)
-    # FunASR timestamps are commonly returned in milliseconds.
-    return value / 1000.0 if value >= 1000 else value
+    # FunASR sentence and token timestamps are milliseconds, including values
+    # below one second. Magnitude-based guessing turns 800 ms into 800 seconds.
+    return float(value) / 1000.0
+
+
+def _clean_sensevoice_text(value: Any) -> str:
+    return SENSEVOICE_TAG_RE.sub("", str(value or "")).strip()
+
+
+def _detect_result_language(results: Any) -> str | None:
+    items = [results] if isinstance(results, dict) else results or []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        explicit = item.get("language")
+        if explicit:
+            return normalize_funasr_language(str(explicit))
+        match = re.search(r"<\|([a-z]{2,3})\|>", str(item.get("text") or ""), re.IGNORECASE)
+        if match:
+            return normalize_funasr_language(match.group(1))
+    return None
+
+
+def _media_duration_seconds(audio: str) -> float:
+    try:
+        import av
+
+        with av.open(audio, metadata_errors="ignore") as container:
+            if container.duration is not None:
+                return max(float(container.duration) / 1_000_000.0, 0.0)
+
+            durations = [
+                float(stream.duration * stream.time_base)
+                for stream in container.streams.audio
+                if stream.duration is not None and stream.time_base is not None
+            ]
+            return max(durations, default=0.0)
+    except (ImportError, OSError, ValueError):
+        return 0.0
 
 
 def _segment_from_item(item: dict[str, Any], default_start: float = 0.0) -> FunASRSegment:
-    text = str(item.get("text") or item.get("sentence") or "").strip()
+    text = _clean_sensevoice_text(item.get("text") or item.get("sentence"))
     start = item.get("start", default_start)
     end = item.get("end", start)
 
@@ -70,7 +110,9 @@ def _segment_from_item(item: dict[str, Any], default_start: float = 0.0) -> FunA
     return FunASRSegment(start=start_s, end=end_s, text=text)
 
 
-def funasr_results_to_segments(results: Any) -> list[FunASRSegment]:
+def funasr_results_to_segments(
+    results: Any, fallback_duration: float = 0.0
+) -> list[FunASRSegment]:
     """Convert common FunASR result shapes to GUI-compatible segments."""
     if isinstance(results, dict):
         results = [results]
@@ -98,11 +140,15 @@ def funasr_results_to_segments(results: Any) -> list[FunASRSegment]:
 
     if not segments:
         return [FunASRSegment(start=0.0, end=0.0, text="")]
+    if len(segments) == 1 and segments[0].end <= segments[0].start and fallback_duration > 0:
+        segments[0].end = fallback_duration
     return segments
 
 
 class FunASRWhisperCompatibleModel:
     """Lazy FunASR model wrapper with a faster-whisper-like ``transcribe`` API."""
+
+    asr_backend = "funasr"
 
     def __init__(
         self,
@@ -125,7 +171,7 @@ class FunASRWhisperCompatibleModel:
                 from funasr import AutoModel
             except ImportError as exc:
                 raise RuntimeError(
-                    'FunASR backend requires the optional dependency: pip install "funasr>=1.3.19"'
+                    'FunASR backend requires the optional dependency: pip install "funasr>=1.3.29"'
                 ) from exc
 
             kwargs = dict(self.model_kwargs)
@@ -138,9 +184,24 @@ class FunASRWhisperCompatibleModel:
             self._model = AutoModel(model=self.model_id, **kwargs)
         return self._model
 
-    def transcribe(self, audio: str, language: str | None = None, hotwords: str | None = None, **_: Any) -> tuple[Iterator[FunASRSegment], FunASRTranscriptionInfo]:
+    def load(self) -> "FunASRWhisperCompatibleModel":
+        """Load the optional runtime eagerly so GUI load errors are immediate."""
+        self._load_model()
+        return self
+
+    def transcribe(
+        self,
+        audio: str,
+        language: str | None = None,
+        hotwords: str | None = None,
+        task: str = "transcribe",
+        **_: Any,
+    ) -> tuple[Iterator[FunASRSegment], FunASRTranscriptionInfo]:
+        if task != "transcribe":
+            raise ValueError("The FunASR / SenseVoice backend does not support translation")
+
         language_hint = normalize_funasr_language(language)
-        generate_kwargs: dict[str, Any] = {"input": audio}
+        generate_kwargs: dict[str, Any] = {"input": audio, "sentence_timestamp": True}
         if language_hint != "auto":
             generate_kwargs["language"] = language_hint
         if hotwords:
@@ -148,9 +209,14 @@ class FunASRWhisperCompatibleModel:
 
         results = self._load_model().generate(**generate_kwargs)
         segments = funasr_results_to_segments(results)
+        if len(segments) == 1 and segments[0].end <= segments[0].start:
+            segments = funasr_results_to_segments(
+                results, fallback_duration=_media_duration_seconds(audio)
+            )
         duration = max((segment.end for segment in segments), default=0.0)
+        detected_language = _detect_result_language(results)
         info = FunASRTranscriptionInfo(
-            language=language_hint,
+            language=detected_language or language_hint,
             duration=duration,
             duration_after_vad=duration,
         )

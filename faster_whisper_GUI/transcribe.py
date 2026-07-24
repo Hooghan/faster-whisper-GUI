@@ -194,6 +194,7 @@ class OutputWorker(QThread):
 
 class TranscribeWorker(QThread):
     signal_process_over = Signal(list)
+    signal_error = Signal(str)
 
     def __init__(self
                 ,parent=None
@@ -228,7 +229,8 @@ class TranscribeWorker(QThread):
         #     return (None, None)
 
         print("开始处理音频...")
-        segments, info = self.model.transcribe(
+        try:
+            segments, info = self.model.transcribe(
                                                 audio=file,
                                                 language=self.parameters["language"],
                                                 task=Task_list[int(self.parameters["task"])],
@@ -264,7 +266,12 @@ class TranscribeWorker(QThread):
                                                 language_detection_segments = self.parameters["language_detection_segments"],
                                                 vad_filter=self.vad_filter,
                                                 vad_parameters=self.vad_parameters
-                                            )
+                                                )
+        except Exception as exc:
+            print(f"{file} 处理失败!")
+            print(str(exc))
+            self.signal_error.emit(str(exc))
+            return (None, None)
         
         try:
             self.detect_Audio_info(info)
@@ -296,7 +303,7 @@ class TranscribeWorker(QThread):
 
     def detect_Audio_info(self, info):
         if info.language != "zh":
-            language = Language_dict[info.language]
+            language = Language_dict.get(info.language, info.language or "auto")
             if language:
                 language = language.capitalize()
         else:
@@ -804,4 +811,3 @@ def getMd5HashId(fileName:str, file_code) -> str:
     md5.update(fileName.encode(file_code))
     id = md5.hexdigest()
     return id
-
